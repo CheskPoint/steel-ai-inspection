@@ -1,36 +1,70 @@
-from datetime import datetime, timezone
-from uuid import uuid4
+import base64
+from io import BytesIO
+from pathlib import Path
+from threading import Lock
 
-from app.schemas.inference import (
-    BoundingBox,
-    InferenceRequest,
-    InferenceResponse,
-    ModelInfo,
-    Prediction,
+from PIL import Image, ImageOps
+from ultralytics import YOLO
+
+
+MODEL_PATH = (
+    Path(__file__).resolve().parents[2] / "models" / "best.pt"
 )
 
+# ºó¶ËÆô¶¯Ê±¼ÓÔØÒ»´Î£¬²»ÒªÃ¿´Î¼ì²â¶¼ÖØĞÂ¼ÓÔØ¡£
+model = YOLO(str(MODEL_PATH))
+model_lock = Lock()
 
-def run_mock_inference(request: InferenceRequest) -> InferenceResponse:
-    """Return deterministic placeholder output until a real model is connected."""
-    normalized_name = request.name.lower()
-    no_defect = any(token in normalized_name for token in ("normal", "good", "ok", "æ— åˆ’ç—•", "æ­£å¸¸"))
-    seed = sum(ord(character) for character in request.name)
-    confidence = max(request.threshold + 0.04, min(0.97, 0.72 + (seed % 22) / 100))
-    predictions = [] if no_defect else [
-        Prediction(
-            class_name="Scratch",
-            confidence=confidence,
-            bbox=BoundingBox(x1=20 + seed % 15, y1=33, x2=78, y2=55 + seed % 9),
-        )
-    ]
-    return InferenceResponse(
-        record_id=str(uuid4()),
-        name=request.name,
-        created_at=datetime.now(timezone.utc).isoformat(),
-        model=ModelInfo(name="scratch-detector", version="mock-v0.1"),
-        predictions=predictions,
-        inference_ms=120 + seed % 170,
-        threshold=request.threshold,
-        source=request.source,
-        mode="mock",
+
+def run_inference(content: bytes, threshold: float) -> dict:
+    # ½«ÉÏ´«µÄÍ¼Æ¬½âÂë£¬²¢´¦ÀíÕÕÆ¬·½Ïò¡£
+    with Image.open(BytesIO(content)) as uploaded:
+        image = ImageOps.exif_transpose(uploaded).convert("RGB")
+
+    # ÏÈÓÃ CPU ÅÜÍ¨Á÷³Ì£¬ÓĞ NVIDIA GPU ºóÔÙµ÷Õû¡£
+    with model_lock:
+        result = model.predict(
+            source=image,
+            imgsz=320,
+            conf=threshold,
+            device="cpu",
+            verbose=False,
+        )[0]
+
+        detections = []
+
+        for box in result.boxes:
+            class_id = int(box.cls.item())
+            detections.append({
+                "class_id": class_id,
+                "class_name": result.names[class_id],
+                "confidence": float(box.conf.item()),
+                "bbox": box.xyxy[0].cpu().tolist(),
+            })
+
+        # plot() ·µ»Ø BGR Í¼Ïñ£¬×ª»»Îª RGB ºóÉú³ÉÍ¼Æ¬¡£
+        annotated_bgr = result.plot()
+
+    annotated_rgb = annotated_bgr[:, :, ::-1]
+    buffer = BytesIO()
+
+    Image.fromarray(annotated_rgb).save(
+        buffer,
+        format="JPEG",
+        quality=90,
     )
+
+    image_base64 = base64.b64encode(
+        buffer.getvalue()
+    ).decode("ascii")
+
+    return {
+        "model": MODEL_PATH.name,
+        "count": len(detections),
+        "detections": detections,
+        "image_width": image.width,
+        "image_height": image.height,
+        "annotated_image": (
+            "data:image/jpeg;base64," + image_base64
+        ),
+    }

@@ -1,43 +1,35 @@
-# SteelVision：热轧钢带划痕检测与质量追溯平台
+# SteelVision：钢材 AI 质检平台
 
-本项目按前后端分离方式组织，参考 [织慧通 SaaS 项目](https://github.com/supermlk500-del/saas) 的 `frontend`、`backend`、`docs` 分层。
+面向热轧钢表面缺陷检测、人工复核、质量判定与质量追溯的 Web 系统框架。
 
-```text
-steel-scratch-web/
-├── frontend/       # Next.js 前端：上传、结果展示、人工复核
-├── backend/        # FastAPI 后端：统一 Mock 推理接口
-├── docs/           # 架构、接口、启动与参考资料
-└── data/           # 数据预留目录（当前不放置数据集）
-```
+## 当前阶段
 
-## 本地启动
+项目处于系统总体框架搭建与功能完善阶段。当前不使用虚构训练数据、检测结果、设备运行数据或模型性能指标。
 
-先分别安装前后端依赖：
+- 已建立“生产批次 → 钢卷 → 检测 → 人工复核 → 质量判定 → 报告归档 → 质量追溯”的业务主线。
+- 前端提供质检业务、设备与 AI、系统管理三组共 15 个模块入口。
+- 批次、钢卷、复核、追溯、设备、告警等页面均采用真实空状态，等待后续接入实际数据源。
+- 后端明确返回模型未部署状态，不会生成 Mock 检测框、置信度或质量结论。
+
+## 本地运行
 
 ```powershell
 cd backend
 py -m pip install -r requirements.txt
-
-cd ..\frontend
-npm.cmd install
-```
-
-打开两个 PowerShell 窗口运行：
-
-```powershell
-# 窗口 1：后端（http://127.0.0.1:8000）
-cd backend
 py -m uvicorn app.main:app --reload --port 8000
 ```
 
 ```powershell
-# 窗口 2：前端（终端会显示实际访问地址）
 cd frontend
+npm.cmd install
 npm.cmd run dev
 ```
 
-演示账号：`admin` / `admin123`。完整说明见 [docs/02-快速启动.md](docs/02-快速启动.md)。
+演示登录账号：`admin` / `admin123`。
 
-## 当前边界
+## 后续接入
 
-后端当前会接收 JPG/JPEG/PNG 文件，进行格式、扩展名和 10 MB 大小校验后返回可复现的 Mock 检测结果。图片不会写入磁盘或数据库；不下载数据集、不训练模型，也不保存业务数据。后续可用真实模型实现替换 `backend/app/services/inference.py`，保持接口契约不变。
+1. 接入生产计划、批次与钢卷基础数据。
+2. 接入工业相机、光源、图像采集设备及产线接口。
+3. 完成数据来源、授权、标注规范和模型验证后，部署真实推理服务。
+4. 接入数据库、对象存储、权限控制和关键操作日志。
