@@ -1,0 +1,13 @@
+.login-entry-options{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin:26px 0 23px}
+.login-entry-button{display:flex;align-items:center;gap:10px;text-align:left;min-width:0;padding:16px 12px;border:1px solid #dce6e9;border-radius:10px;background:#fff;color:#728890;transition:background .15s,border-color .15s,box-shadow .15s}
+.login-entry-button:hover{border-color:#89b7bd;background:#f5faf9}
+.login-entry-button[aria-pressed=true]{background:#eaf5f3;border-color:#478f96;color:#176b77;box-shadow:0 0 0 1px #478f9612}
+.login-entry-button:focus-visible{outline:3px solid #81c6ce;outline-offset:3px}
+.login-entry-button:disabled{cursor:wait;opacity:.65}
+.login-entry-button svg{width:23px;height:23px;flex:none}
+.login-entry-button strong{display:block;font-size:13px;font-weight:650;white-space:nowrap}
+.login-entry-button small{display:block;font-size:9px;color:#8aa0a6;margin-top:5px;white-space:nowrap}
+.login-entry-button[aria-pressed=true] small{color:#6c999b}
+.login-entry-button i{display:grid;place-items:center;width:14px;height:14px;border-radius:50%;border:1px solid #d3e0e2;margin-left:auto;flex:none;font-size:9px;font-style:normal}
+.login-entry-button[aria-pressed=true] i{color:#fff;background:#39848c;border-color:#39848c}
+@media(max-width:420px){.login-entry-options{gap:9px}.login-entry-button{padding:14px 10px;gap:8px}.login-entry-button svg{width:19px;height:19px}.login-entry-button strong{font-size:12px}.login-entry-button i{width:12px;height:12px}.login-entry-button small{font-size:8px}}

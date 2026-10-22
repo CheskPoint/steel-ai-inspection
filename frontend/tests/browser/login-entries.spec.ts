@@ -1,0 +1,65 @@
+import { test, expect } from "@playwright/test";
+
+const backend = "http://localhost:8001/api/v1";
+const headers = { Origin: "http://localhost:3001" };
+
+test("login identity buttons validate accounts and layout settings remain available to both roles", async ({ page }) => {
+  await page.request.post(`${backend}/auth/login`, { headers, data: { username: "admin", password: "admin123" } });
+  const username = `entry${Date.now()}`;
+  expect((await page.request.post(`${backend}/users`, { headers, data: { username, password: "employee123", role: "inspector", display_name: "入口验收员工" } })).ok()).toBeTruthy();
+  await page.request.post(`${backend}/auth/logout`, { headers });
+  await page.goto("/login");
+  await expect(page.getByRole("button", { name: "员工登录", exact: true })).toBeEnabled();
+  await expect(page.getByRole("button", { name: "员工登录", exact: true })).toHaveAttribute("aria-pressed", "true");
+  await expect(page.getByRole("button", { name: "管理员登录", exact: true })).toBeVisible();
+  await page.screenshot({ path: "../outputs/login-employee-entry.png", fullPage: true });
+  await page.getByLabel("账号", { exact: true }).fill("admin");
+  await page.getByLabel("密码", { exact: true }).fill("admin123");
+  await page.getByRole("button", { name: "进入工作台" }).click();
+  await expect(page.getByRole("alert")).toContainText("管理员登录");
+  expect((await page.request.get(`${backend}/auth/me`)).status()).toBe(401);
+  await page.getByRole("button", { name: "管理员登录", exact: true }).click();
+  await expect(page.getByRole("alert")).toHaveCount(0);
+  await page.screenshot({ path: "../outputs/login-admin-entry.png", fullPage: true });
+  await page.getByRole("button", { name: "进入工作台" }).click();
+  await expect(page.getByRole("heading", { name: "管理工作台", exact: true })).toBeVisible();
+  const layout = page.getByRole("group", { name: "界面方案", exact: true });
+  await expect(layout).toHaveCount(0);
+  for (const name of ["用户与权限", "生产", "缺陷知识库"]) {
+    await page.getByRole("navigation").getByRole("button", { name, exact: true }).click();
+    await expect(layout).toHaveCount(0);
+  }
+  await page.getByRole("navigation").getByRole("button", { name: "系统设置", exact: true }).click();
+  await expect(layout).toHaveCount(1);
+  await page.getByRole("button", { name: "原版布局", exact: true }).click();
+  await page.getByRole("navigation").getByRole("button", { name: "操作日志", exact: true }).click();
+  await expect(layout).toHaveCount(0);
+  await page.getByRole("navigation").getByRole("button", { name: "质检总览", exact: true }).click();
+  await expect(page.getByRole("heading", { name: "看见细微，掌握全局。" })).toBeVisible();
+  await expect(layout).toHaveCount(0);
+  await page.getByRole("navigation").getByRole("button", { name: "系统设置", exact: true }).click();
+  await expect(page.getByRole("button", { name: "原版布局", exact: true })).toHaveAttribute("aria-pressed", "true");
+  await page.getByRole("button", { name: "退出", exact: true }).click();
+  await page.getByLabel("账号", { exact: true }).fill(username);
+  await page.getByLabel("密码", { exact: true }).fill("employee123");
+  await page.getByRole("button", { name: "管理员登录", exact: true }).click();
+  await page.getByRole("button", { name: "进入工作台" }).click();
+  await expect(page.getByRole("alert")).toContainText("员工登录");
+  await page.getByRole("button", { name: "员工登录", exact: true }).click();
+  await page.setViewportSize({ width: 390, height: 844 });
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBeTruthy();
+  await page.screenshot({ path: "../outputs/login-mobile-entry.png", fullPage: true });
+  await page.getByRole("button", { name: "进入工作台" }).click();
+  await expect(page.getByRole("heading", { name: "我的工作台", exact: true })).toBeVisible();
+  await expect(layout).toHaveCount(0);
+  await page.getByRole("button", { name: "界面设置", exact: true }).click();
+  await expect(page.getByRole("dialog", { name: "界面设置", exact: true }).getByRole("group", { name: "界面方案" })).toBeVisible();
+  await page.getByRole("button", { name: "关闭详情", exact: true }).click();
+  await expect(layout).toHaveCount(0);
+  await expect(page.getByRole("navigation", { name: "主导航" })).toBeHidden();
+  await page.getByRole("button", { name: "打开导航菜单", exact: true }).click();
+  await page.getByRole("navigation").getByRole("button", { name: "生产", exact: true }).click();
+  await expect(layout).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "打开导航菜单", exact: true })).toHaveAttribute("aria-expanded", "false");
+  await expect(page.getByRole("navigation", { name: "主导航" })).toBeHidden();
+});

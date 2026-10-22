@@ -12,6 +12,9 @@
 
 # testing
 /coverage
+/test-results/
+/playwright-report/
+*.tsbuildinfo
 
 # next.js
 /.next/

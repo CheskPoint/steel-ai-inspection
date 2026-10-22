@@ -1,33 +1,62 @@
 import base64
+import hashlib
+import platform
 from io import BytesIO
 from pathlib import Path
 from threading import Lock
 
 from PIL import Image, ImageOps
 from ultralytics import YOLO
+import ultralytics
+import torch
+
+from app.db import CLASSES
+from app.services.model_evidence import load_evaluation
 
 
 MODEL_PATH = (
     Path(__file__).resolve().parents[2] / "models" / "best.pt"
 )
 
-# ºó¶ËÆô¶¯Ê±¼ÓÔØÒ»´Î£¬²»ÒªÃ¿´Î¼ì²â¶¼ÖØÐÂ¼ÓÔØ¡£
+# åŽç«¯å¯åŠ¨æ—¶åŠ è½½ä¸€æ¬¡ï¼Œä¸è¦æ¯æ¬¡æ£€æµ‹éƒ½é‡æ–°åŠ è½½ã€‚
+MODEL_SHA256 = hashlib.sha256(MODEL_PATH.read_bytes()).hexdigest()
 model = YOLO(str(MODEL_PATH))
+if hashlib.sha256(MODEL_PATH.read_bytes()).hexdigest() != MODEL_SHA256:
+    raise RuntimeError('æ¨¡åž‹åŠ è½½è¿‡ç¨‹ä¸­æƒé‡å‘ç”Ÿå˜åŒ–ï¼Œè¯·é‡å¯æœåŠ¡ã€‚')
+MODEL_CLASSES = [model.names[key] for key in sorted(model.names)]
+if model.task != "detect" or MODEL_CLASSES != list(CLASSES):
+    raise RuntimeError("éƒ¨ç½²æƒé‡çš„ä»»åŠ¡æˆ–ç±»åˆ«ä¸Žç³»ç»Ÿé…ç½®ä¸ä¸€è‡´ã€‚")
 model_lock = Lock()
+INFERENCE_DEVICE = "cpu"
+INFERENCE_IMAGE_SIZE = 640
+
+
+def get_model_info() -> dict:
+    return {
+        "model_name": MODEL_PATH.name,
+        "classes": MODEL_CLASSES,
+        "device": INFERENCE_DEVICE,
+        "image_size": INFERENCE_IMAGE_SIZE,
+        "model_sha256": MODEL_SHA256,
+        "evaluation": load_evaluation(MODEL_PATH.with_name('evaluation.json'), MODEL_SHA256),
+    }
 
 
 def run_inference(content: bytes, threshold: float) -> dict:
-    # ½«ÉÏ´«µÄÍ¼Æ¬½âÂë£¬²¢´¦ÀíÕÕÆ¬·½Ïò¡£
+    # å°†ä¸Šä¼ çš„å›¾ç‰‡è§£ç ï¼Œå¹¶å¤„ç†ç…§ç‰‡æ–¹å‘ã€‚
     with Image.open(BytesIO(content)) as uploaded:
         image = ImageOps.exif_transpose(uploaded).convert("RGB")
 
-    # ÏÈÓÃ CPU ÅÜÍ¨Á÷³Ì£¬ÓÐ NVIDIA GPU ºóÔÙµ÷Õû¡£
+    # å…ˆç”¨ CPU è·‘é€šæµç¨‹ï¼Œæœ‰ NVIDIA GPU åŽå†è°ƒæ•´ã€‚
     with model_lock:
         result = model.predict(
             source=image,
-            imgsz=320,
+            imgsz=INFERENCE_IMAGE_SIZE,
             conf=threshold,
-            device="cpu",
+            device=INFERENCE_DEVICE,
+            iou=.7,
+            max_det=300,
+            augment=False,
             verbose=False,
         )[0]
 
@@ -42,7 +71,7 @@ def run_inference(content: bytes, threshold: float) -> dict:
                 "bbox": box.xyxy[0].cpu().tolist(),
             })
 
-        # plot() ·µ»Ø BGR Í¼Ïñ£¬×ª»»Îª RGB ºóÉú³ÉÍ¼Æ¬¡£
+        # plot() è¿”å›ž BGR å›¾åƒï¼Œè½¬æ¢ä¸º RGB åŽç”Ÿæˆå›¾ç‰‡ã€‚
         annotated_bgr = result.plot()
 
     annotated_rgb = annotated_bgr[:, :, ::-1]
@@ -60,6 +89,20 @@ def run_inference(content: bytes, threshold: float) -> dict:
 
     return {
         "model": MODEL_PATH.name,
+        "model_classes": MODEL_CLASSES,
+        "model_sha256": MODEL_SHA256,
+        "runtime": {
+            "device": INFERENCE_DEVICE,
+            "image_size": INFERENCE_IMAGE_SIZE,
+            "threshold": threshold,
+            "iou": .7,
+            "max_detections": 300,
+            "augmentation": False,
+            "ultralytics_version": ultralytics.__version__,
+            "torch_version": torch.__version__,
+            "python_version": platform.python_version(),
+            "inference_ms": result.speed.get('inference'),
+        },
         "count": len(detections),
         "detections": detections,
         "image_width": image.width,

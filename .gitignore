@@ -22,3 +22,20 @@ backend/**/__pycache__/
 data/raw/
 data/processed/
 data/uploads/
+backend/data/
+frontend/test-results/
+frontend/playwright-report/
+frontend/*.tsbuildinfo
+outputs/
+
+# Local archives, generated inventories, and internal planning notes
+/project-tree.txt
+/steelvision-site.tar.gz
+/docs/superpowers/
+
+# Machine-specific hosting configuration; the public fallback is committed
+/frontend/.openai/hosting.json
+
+# npm is the documented package manager for this project
+/frontend/pnpm-lock.yaml
+/frontend/pnpm-workspace.yaml

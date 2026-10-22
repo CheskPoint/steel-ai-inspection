@@ -1,5 +1,4 @@
 import assert from "node:assert/strict";
-import { readFile } from "node:fs/promises";
 import test from "node:test";
 
 async function render() {
@@ -13,31 +12,14 @@ async function render() {
   );
 }
 
-test("server-renders the SteelVision application shell", async () => {
+test("server-renders the CR7 智检 application shell", async () => {
   const response = await render();
   assert.equal(response.status, 200);
   assert.match(response.headers.get("content-type") ?? "", /^text\/html\b/i);
   const html = await response.text();
   assert.match(html, /<html lang="zh-CN">/);
-  assert.match(html, /SteelVision \| 热轧钢带划痕检测与质量追溯/);
-  assert.match(html, /面向热轧钢表面缺陷检测、人工复核与质量追溯/);
-  assert.match(html, /热轧钢表面质量总览/);
-  assert.match(html, /模型未部署/);
+  assert.match(html, /CR7 智检 \| 冷轧钢板表面缺陷检测与质量追溯/);
+  assert.match(html, /面向冷轧钢板表面缺陷检测、人工复核与质量追溯/);
+  assert.match(html, /正在载入质检工作台/);
   assert.doesNotMatch(html, /Your site is taking shape/);
-});
-
-test("keeps the true-empty-state quality business framework in the client", async () => {
-  const [page, login, css] = await Promise.all([
-    readFile(new URL("../app/page.tsx", import.meta.url), "utf8"),
-    readFile(new URL("../app/login/page.tsx", import.meta.url), "utf8"),
-    readFile(new URL("../app/globals.css", import.meta.url), "utf8"),
-  ]);
-  assert.match(page, /生产批次/);
-  assert.match(page, /人工复核/);
-  assert.match(page, /模型未部署/);
-  assert.match(page, /不展示虚构检测结果/);
-  assert.match(page, /质量追溯/);
-  assert.match(login, /admin123/);
-  assert.match(css, /\.industrial-empty/);
-  assert.match(css, /\.inspection-workbench/);
 });
