@@ -73,7 +73,8 @@ function Invoke-Native {
 function Test-Torch {
     Push-Location -LiteralPath $Backend
     try {
-        & $Python -c 'import fastapi, ultralytics, torch; print(torch.__version__)'
+        # Some packages print to stdout before a failed import. Only the exit code may decide success.
+        & $Python -c 'import fastapi, ultralytics, torch; print(torch.__version__)' | Out-Null
         return ($LASTEXITCODE -eq 0)
     } finally {
         Pop-Location
