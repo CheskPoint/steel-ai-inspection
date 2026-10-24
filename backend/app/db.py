@@ -90,7 +90,8 @@ def init_db():
         # Metadata, rather than user count, prevents silently recreating a default account.
         conn.execute("BEGIN IMMEDIATE")
         if not conn.execute("SELECT 1 FROM metadata WHERE key='initialized'").fetchone():
-            conn.execute("INSERT INTO users VALUES(?,?,?,?,?,?)", (new_id(), "admin", "管理员", "admin", 1, password_hash("admin123")))
+            initial_password = os.environ.get("STEELVISION_INITIAL_ADMIN_PASSWORD", "admin123")
+            conn.execute("INSERT INTO users VALUES(?,?,?,?,?,?)", (new_id(), "admin", "管理员", "admin", 1, password_hash(initial_password)))
             conn.execute("INSERT INTO metadata VALUES('initialized',?)", (now(),))
         # Two-role model: merge legacy read-only accounts into the employee role.
         # Preserve identifiers/passwords and revoke sessions when privileges change.
