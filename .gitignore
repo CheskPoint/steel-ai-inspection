@@ -23,6 +23,12 @@ data/raw/
 data/processed/
 data/uploads/
 backend/data/
+smoke-data/
+logs/
+/.deploy-prepared
+/.deploy-old-task-actions.json
+/scripts/start-backend-cr7.bat
+/scripts/start-frontend-cr7.bat
 frontend/test-results/
 frontend/playwright-report/
 frontend/*.tsbuildinfo
